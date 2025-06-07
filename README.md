@@ -1,6 +1,7 @@
 
 
 # TrendNest
+![GitHub Repo](https://img.shields.io/github/repo-size/Peippo1/TrendNest)
 
 **TrendNest** is a portfolio-ready data pipeline and dashboard project that ingests, transforms, models, and visualizes data trends over time. It integrates AI summarization using Gemini 1.5 and supports exporting cleaned data to CSV. The project is fully containerized and deployable.
 
