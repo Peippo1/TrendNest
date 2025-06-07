@@ -1,7 +1,11 @@
 
 
+
 # TrendNest
-![GitHub Repo](https://img.shields.io/github/repo-size/Peippo1/TrendNest)
+
+| ![Repo Size](https://img.shields.io/github/repo-size/Peippo1/TrendNest) | ![Last Commit](https://img.shields.io/github/last-commit/Peippo1/TrendNest) | ![License](https://img.shields.io/github/license/Peippo1/TrendNest) | ![Python Version](https://img.shields.io/badge/python-3.10%2B-blue) | ![Build](https://img.shields.io/badge/build-passing-brightgreen) | ![Docker](https://img.shields.io/badge/docker-ready-blue) | ![GCP](https://img.shields.io/badge/GCP-BigQuery-informational) | ![Gemini](https://img.shields.io/badge/Gemini-1.5_AI-yellow) | [![Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://peippo1-trendnest.streamlit.app) |
+|:------------------------------------------------------------------------:|:-----------------------------------------------------------------------------:|:--------------------------------------------------------------------:|:------------------------------------------------------------------:|:--------------------------------------------------------------:|:--------------------------------------------------------:|:----------------------------------------------------:|:--------------------------------------------------:|:--------------------------------------------------:|
+| Repo size                                                               | Last commit                                                                  | License                                                              | Python version                                                    | Build status                                                  | Docker support                                        | GCP BigQuery                                         | Gemini AI summarization                           | Streamlit App                                    |
 
 **TrendNest** is a portfolio-ready data pipeline and dashboard project that ingests, transforms, models, and visualizes data trends over time. It integrates AI summarization using Gemini 1.5 and supports exporting cleaned data to CSV. The project is fully containerized and deployable.
 
