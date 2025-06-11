@@ -3,6 +3,7 @@ python-dotenv
 streamlit
 plotly
 scikit-learn
+yfinance
 google-cloud-bigquery
 # Placeholder for Gemini 1.5 integration
 openai  # or replace with official Gemini client when available
