@@ -17,13 +17,24 @@ def upload_to_bigquery(df):
 
     credentials = service_account.Credentials.from_service_account_file(credentials_path)
 
+    # Set global context for pandas_gbq
+    pandas_gbq.context.credentials = credentials
+    pandas_gbq.context.project = PROJECT_ID
+
+    # Flatten column headers in case of MultiIndex
+    df.columns = [col[0] if isinstance(col, tuple) else str(col) for col in df.columns]
+
+    print("📋 Column types and names:")
+    print(df.columns.tolist()) # type: ignore
+    print("✅ Columns are strings:", all(isinstance(col, str) for col in df.columns))
+
+    
     try:
         pandas_gbq.to_gbq(
             dataframe=df,
-            destination_table=str(f"{DATASET}.{TABLE}"),
-            project_id=str(PROJECT_ID),
-            if_exists="append",
-            credentials=credentials
+            destination_table=f"{DATASET}.{TABLE}",
+            project_id=PROJECT_ID,
+            if_exists="append"
         )
         print(f"✅ Upload to BigQuery complete: {DATASET}.{TABLE}")
     except Exception as e:

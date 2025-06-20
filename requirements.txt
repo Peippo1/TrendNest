@@ -7,4 +7,6 @@ yfinance
 google-generativeai
 google-cloud-bigquery
 # Placeholder for Gemini 1.5 integration
-openai  # or replace with official Gemini client when availablepandas-gbq
+openai  # or replace with official Gemini client when available
+pandas-gbq
+tabulate
