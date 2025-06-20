@@ -9,6 +9,9 @@ DATA_SOURCE = os.getenv("DATA_SOURCE", "data/sample.csv")
 EXPORT_PATH = os.getenv("EXPORT_PATH", "data/cleaned_data.csv")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+# Stock symbol configuration
+STOCK_SYMBOL = os.getenv("STOCK_SYMBOL", "AAPL")
+
 # src/extract.py
 import pandas as pd
 from src.config import DATA_SOURCE

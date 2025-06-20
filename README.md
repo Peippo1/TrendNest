@@ -20,24 +20,40 @@
 
 ```
 TrendNest/
-├── data/                  # Local or sample data
-├── dags/                  # Airflow DAGs (optional)
-├── notebooks/             # EDA and exploration
-├── src/                   # Core logic
-│   ├── extract.py         # Ingest data
-│   ├── transform.py       # Clean and prepare
-│   ├── model.py           # Trend analysis
-│   ├── summarize.py       # Gemini summaries
-│   └── export.py          # CSV export
-├── sql/                   # SQL query files
-├── dashboard/             # UI app (e.g., Streamlit)
-├── tests/                 # Unit tests
-├── docker/                # Dockerfile and configs
-├── run_pipeline.py        # Entry point
-├── requirements.txt       # Python dependencies
-├── .env                   # Environment variables
-├── .gitignore
-└── README.md              # This file
+├── dags/                      # Airflow DAGs (optional)
+├── dashboard/                 # Streamlit dashboard app
+│   └── app.py                 # Main UI script
+├── data/                      # Local and processed data
+│   ├── cleaned_data.csv       # Output from pipeline
+│   └── sample.csv             # Example input data
+├── docker/                    # Containerization setup
+│   └── Dockerfile             # Docker build instructions
+├── docs/                      # Documentation and notes
+│   └── design.md              # System design outline
+├── notebooks/                 # Jupyter notebooks (EDA, prototyping)
+├── sql/                       # BigQuery-compatible SQL queries
+│   ├── monthly_averages.sql   # Avg monthly close/volume
+│   ├── latest_prices.sql      # Most recent close prices
+│   └── volume_spikes.sql      # High-volume trading days
+├── src/                       # Core data pipeline logic
+│   ├── __init__.py
+│   ├── config.py              # Config constants
+│   ├── extract.py             # Local/CSV data extraction
+│   ├── extract_stocks.py      # YFinance stock extractor
+│   ├── transform.py           # Data cleaning
+│   ├── model.py               # Trend modeling
+│   ├── summarize.py           # Gemini AI summaries
+│   ├── export.py              # CSV export
+│   └── upload.py              # BigQuery uploader
+├── test_https.py              # API connectivity test
+├── test_upload.py             # BigQuery upload test
+├── test_yfinance_fetch.py     # yfinance fetch test
+├── tests/                     # Unit tests (placeholder)
+├── run_pipeline.py            # Main pipeline runner
+├── requirements.txt           # Python dependencies
+├── .env                       # Environment variables
+├── .gitignore                 # Git exclusions
+└── README.md                  # This file
 ```
 
 ## 🚀 Getting Started
@@ -71,6 +87,47 @@ TrendNest/
 
 TrendNest integrates Gemini 1.5 to generate natural language summaries of key insights in your trend data. This makes the dashboard useful to both technical and non-technical stakeholders.
 
+Example summary output:
+> "Apple's stock (AAPL) shows a general upward trend from December 2024 to June 2025, increasing from ~$172 to ~$258. Trading volume spiked in June, suggesting heightened investor interest."
+
+## 🗃️ BigQuery Integration
+
+TrendNest supports uploading cleaned trend data to Google BigQuery. This enables:
+- SQL-based analysis
+- Historical trend aggregation
+- Integration with Looker Studio or other BI tools
+
+Each run appends to the `trendnest.cleaned_stock_data` table using a service account key.
+
+## 🧮 SQL Querying Example
+
+Once data is in BigQuery, you can run SQL like:
+
+```sql
+SELECT
+  FORMAT_DATE('%Y-%m', PARSE_DATE('%Y-%m-%d', date)) AS month,
+  ROUND(AVG(CAST(Close AS FLOAT64)), 2) AS avg_close,
+  ROUND(AVG(CAST(Volume AS INT64))) AS avg_volume
+FROM `trendnest-463421.trendnest.cleaned_stock_data`
+WHERE Ticker = 'AAPL'
+GROUP BY month
+ORDER BY month;
+```
+
+---
+
+### 📂 Included SQL Files
+
+The `/sql/` directory contains reusable queries for analytics and dashboarding:
+
+- `monthly_averages.sql`: Calculates average monthly closing price and trading volume
+- `latest_prices.sql`: Retrieves the most recent closing price for each ticker
+- `volume_spikes.sql`: Identifies unusually high trading volume days
+
+These can be run in BigQuery or loaded into the dashboard for insights.
+
+---
+
 ## 🐳 Docker Support
 
 Build and run the container:
@@ -83,3 +140,10 @@ docker run -p 8501:8501 trendnest
 ## 📄 License
 
 MIT — free to use, modify, and distribute.
+
+## 📦 Changelog
+
+### v1.1.0
+- Integrated Gemini 1.5 for AI-generated summaries
+- Implemented BigQuery upload via service account
+- Enabled SQL querying and Looker Studio compatibility

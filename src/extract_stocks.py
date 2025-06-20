@@ -1,9 +1,19 @@
+import time
 import yfinance as yf
 import pandas as pd
 
-def fetch_stock_data_yf(symbol: str, period="6mo", interval="1d") -> pd.DataFrame:
-    df = yf.download(symbol, period=period, interval=interval, auto_adjust=True)
-    df = df[["Close", "Volume"]].rename(columns={"Close": "adjusted_close", "Volume": "volume"})
-    df = df.reset_index().rename(columns={"Date": "date"})
-    print(f"Fetched {len(df)} rows for {symbol} using yfinance")
-    return df
+def fetch_stock_data_yf(symbol, period="6mo", interval="1d", max_retries=5, backoff=3):
+    for attempt in range(1, max_retries + 1):
+        df = yf.download(symbol, period=period, interval=interval)
+        if not df.empty:
+            df.reset_index(inplace=True)
+            df.rename(columns={"Date": "date", "Adj Close": "adjusted_close"}, inplace=True)
+            df["Ticker"] = symbol
+            print(f"Fetched {len(df)} rows for {symbol} using yfinance")
+            return df
+        else:
+            print(f"⚠️ Attempt {attempt}: No data fetched for {symbol}. Retrying in {backoff} seconds...")
+            time.sleep(backoff)
+            backoff *= 2  # Exponential backoff
+
+    raise ValueError(f"❌ Failed to fetch data for {symbol} after {max_retries} attempts.")
