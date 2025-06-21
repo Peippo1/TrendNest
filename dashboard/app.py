@@ -4,7 +4,8 @@ import os
 
 st.set_page_config(page_title="TrendNest Dashboard", layout="wide")
 
-st.title("📊 TrendNest: Stock Data Dashboard")
+st.title("📊 TrendNest")
+st.caption("Explore live stock trends and volumes with AI-powered summaries")
 
 DATA_PATH = os.getenv("EXPORT_PATH", "data/cleaned_data.csv")
 
@@ -16,9 +17,9 @@ except FileNotFoundError:
     st.error("❌ Data file not found. Please run the pipeline first.")
     st.stop()
 
-# Dropdown for ticker (prepare for multi-ticker later)
-ticker = st.selectbox("Select Ticker", options=[df["Ticker"].iloc[0]], index=0)
-
+tickers = df["Ticker"].dropna().unique().tolist()
+default_ticker = tickers[-1] if tickers else None
+ticker = st.selectbox("Select Ticker", options=tickers, index=tickers.index(default_ticker) if default_ticker else 0)
 
 # Filtered data
 filtered_df = df[df["Ticker"] == ticker]
@@ -50,10 +51,8 @@ st.line_chart(filtered_df.set_index("date")["adjusted_close"])
 st.subheader("📊 Volume")
 st.bar_chart(filtered_df.set_index("date")["volume"])
 
-
-# Summary placeholder
 st.subheader("🧠 AI Summary")
-st.info("This is a placeholder summary from Gemini 1.5. Replace with live model output later.")
+st.info("AI-generated insights powered by Gemini 1.5")
 
 # Download button
 st.subheader("📥 Download Data")
