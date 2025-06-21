@@ -3,7 +3,7 @@ import pandas_gbq
 from google.oauth2 import service_account
 
 # Configuration
-PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+PROJECT_ID = os.getenv("GCP_PROJECT_ID", "")
 DATASET = os.getenv("BQ_DATASET", "trendnest")
 TABLE = os.getenv("BQ_TABLE", "cleaned_stock_data")
 

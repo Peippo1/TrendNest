@@ -9,45 +9,27 @@ DATA_SOURCE = os.getenv("DATA_SOURCE", "data/sample.csv")
 EXPORT_PATH = os.getenv("EXPORT_PATH", "data/cleaned_data.csv")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
-# Stock symbol configuration
-STOCK_SYMBOL = os.getenv("STOCK_SYMBOL", "AAPL")
+# Fetch top performing stocks (e.g. based on % daily change)
+def get_top_performing_stocks(limit=10):
+    import yfinance as yf
 
-# src/extract.py
-import pandas as pd
-from src.config import DATA_SOURCE
+    # Example stock universe (expandable)
+    symbols = [
+        "AAPL", "MSFT", "GOOGL", "NVDA", "AMZN", "TSLA", "META", "NFLX", "INTC", "CSCO",
+        "IBM", "ADBE", "PYPL", "CRM", "ORCL"
+    ]
 
-def extract_data():
-    try:
-        df = pd.read_csv(DATA_SOURCE)
-        print(f"Data extracted from {DATA_SOURCE}")
-        return df
-    except Exception as e:
-        print(f"Error extracting data: {e}")
-        return pd.DataFrame()
+    changes = []
+    for symbol in symbols:
+        ticker = yf.Ticker(symbol)
+        hist = ticker.history(period="2d")  # fetch previous and current close
+        if len(hist) >= 2:
+            prev_close = hist['Close'].iloc[-2]
+            today_close = hist['Close'].iloc[-1]
+            pct_change = ((today_close - prev_close) / prev_close) * 100
+            changes.append((symbol, pct_change))
 
-# src/transform.py
-def clean_data(df):
-    # Example transformation: drop nulls and sort by date
-    df_clean = df.dropna()
-    if 'date' in df_clean.columns:
-        df_clean = df_clean.sort_values(by='date')
-    print("Data cleaned and sorted")
-    return df_clean
-
-# src/model.py
-def analyze_trends(df):
-    # Placeholder trend analysis logic
-    trend_summary = df.describe()  # Example: summary statistics
-    print("Trend analysis complete")
-    return trend_summary
-
-# src/summarize.py
-def generate_summary(df):
-    # Placeholder for Gemini API integration
-    print("Generating summary with Gemini 1.5...")
-    return "This is a placeholder summary."
-
-# src/export.py
-def export_to_csv(df, path):
-    df.to_csv(path, index=False)
-    print(f"Data exported to {path}")
+    sorted_changes = sorted(changes, key=lambda x: x[1], reverse=True)
+    top_symbols = [sym for sym, _ in sorted_changes[:limit]]
+    print(f"📈 Top {limit} performing stocks: {top_symbols}")
+    return top_symbols
