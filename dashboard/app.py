@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import altair as alt
 
 st.set_page_config(page_title="TrendNest Dashboard", layout="wide")
 
@@ -18,15 +19,19 @@ except FileNotFoundError:
     st.stop()
 
 tickers = df["Ticker"].dropna().unique().tolist()
-default_ticker = tickers[-1] if tickers else None
-ticker = st.selectbox("Select Ticker", options=tickers, index=tickers.index(default_ticker) if default_ticker else 0)
+
+selected_tickers = st.multiselect("Select Tickers", options=tickers, default=tickers[:5])
+
+if not selected_tickers:
+    st.warning("⚠️ Please select at least one ticker.")
+    st.stop()
 
 # Filtered data
-filtered_df = df[df["Ticker"] == ticker]
+filtered_df = df[df["Ticker"].isin(selected_tickers)]
 
 # Date range filter
 if filtered_df.empty or filtered_df["date"].isna().all():
-    st.warning("⚠️ No valid dates available for this ticker.")
+    st.warning("⚠️ No valid dates available for the selected tickers.")
     st.stop()
 
 min_date = filtered_df["date"].min().date()
@@ -46,15 +51,35 @@ filtered_df = filtered_df[
 
 # Charts
 st.subheader("📈 Adjusted Close Price")
-st.line_chart(filtered_df.set_index("date")["adjusted_close"])
+line_chart = alt.Chart(filtered_df.tail(300)).mark_line().encode(
+    x="date:T",
+    y="Close:Q",
+    color="Ticker:N",
+    tooltip=["Ticker", "date", "Close"]
+).properties(width=800, height=400)
+st.altair_chart(line_chart, use_container_width=True)
 
 st.subheader("📊 Volume")
-st.bar_chart(filtered_df.set_index("date")["volume"])
+bar_chart = alt.Chart(filtered_df.tail(300)).mark_bar().encode(
+    x="date:T",
+    y="Volume:Q",
+    color="Ticker:N",
+    tooltip=["Ticker", "date", "Volume"]
+).properties(width=800, height=400)
+st.altair_chart(bar_chart, use_container_width=True)
 
-st.subheader("🧠 AI Summary")
-st.info("AI-generated insights powered by Gemini 1.5")
+st.subheader("🧠 AI Summaries")
+for ticker in selected_tickers:
+    ticker_df = filtered_df[filtered_df["Ticker"] == ticker]
+    if "summary" in ticker_df.columns and not ticker_df["summary"].isna().all():
+        summary_text = ticker_df["summary"].dropna().iloc[-1]
+        st.markdown(f"**{ticker}**")
+        st.success(summary_text)
+    else:
+        st.markdown(f"**{ticker}**")
+        st.info("No AI summary available.")
 
 # Download button
 st.subheader("📥 Download Data")
 csv = filtered_df.to_csv(index=False).encode("utf-8")
-st.download_button("Download Filtered CSV", data=csv, file_name=f"{ticker}_filtered_data.csv", mime="text/csv")
+st.download_button("Download Filtered CSV", data=csv, file_name="filtered_stock_data.csv", mime="text/csv")
