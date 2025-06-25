@@ -49,24 +49,34 @@ filtered_df = filtered_df[
     (filtered_df["date"].dt.date <= date_range[1])
 ]
 
-# Charts
-st.subheader("📈 Adjusted Close Price")
-line_chart = alt.Chart(filtered_df.tail(300)).mark_line().encode(
-    x="date:T",
-    y="Close:Q",
-    color="Ticker:N",
-    tooltip=["Ticker", "date", "Close"]
-).properties(width=800, height=400)
-st.altair_chart(line_chart, use_container_width=True)
+row_limit = st.select_slider("Chart Data Points", options=[50, 100, 150, 200, 300], value=300)
+smooth = st.checkbox("Apply 7-day rolling average to price", value=False)
 
-st.subheader("📊 Volume")
-bar_chart = alt.Chart(filtered_df.tail(300)).mark_bar().encode(
-    x="date:T",
-    y="Volume:Q",
-    color="Ticker:N",
-    tooltip=["Ticker", "date", "Volume"]
-).properties(width=800, height=400)
-st.altair_chart(bar_chart, use_container_width=True)
+chart_df = filtered_df.sort_values("date").tail(row_limit)
+if smooth:
+    chart_df["Close"] = chart_df.groupby("Ticker")["Close"].transform(lambda x: x.rolling(window=7, min_periods=1).mean())
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("📈 Adjusted Close Price")
+    line_chart = alt.Chart(chart_df).mark_line().encode(
+        x="date:T",
+        y="Close:Q",
+        color="Ticker:N",
+        tooltip=["Ticker", "date", "Close"]
+    ).properties(height=400)
+    st.altair_chart(line_chart, use_container_width=True)
+
+with col2:
+    st.subheader("📊 Volume")
+    bar_chart = alt.Chart(chart_df).mark_bar().encode(
+        x="date:T",
+        y="Volume:Q",
+        color="Ticker:N",
+        tooltip=["Ticker", "date", "Volume"]
+    ).properties(height=400)
+    st.altair_chart(bar_chart, use_container_width=True)
 
 st.subheader("🧠 AI Summaries")
 for ticker in selected_tickers:
