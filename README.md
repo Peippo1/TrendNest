@@ -147,3 +147,10 @@ MIT — free to use, modify, and distribute.
 - Integrated Gemini 1.5 for AI-generated summaries
 - Implemented BigQuery upload via service account
 - Enabled SQL querying and Looker Studio compatibility
+
+### v1.2.0
+- Multi-ticker support added with interactive dashboard controls
+- Upgraded Streamlit dashboard with Altair charts (line and bar)
+- Dynamic filtering and AI summaries per selected ticker
+- Enhanced CSV export for selected tickers and date ranges
+- Improved dashboard responsiveness and readability
