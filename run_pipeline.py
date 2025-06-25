@@ -5,11 +5,15 @@ from src.summarize import generate_summary
 from src.export import export_to_csv
 from src.config import EXPORT_PATH, get_top_performing_stocks
 from src.upload import upload_to_bigquery
+import pandas as pd
 
 def main():
     print("🚀 Starting TrendNest pipeline...\n")
 
     tickers = get_top_performing_stocks()
+    print(f"🧾 Tickers to process: {', '.join(tickers)}")
+
+    combined_df = []
 
     for symbol in tickers:
         print(f"\n📥 Fetching live stock data for: {symbol}")
@@ -31,10 +35,13 @@ def main():
         summary = generate_summary(trend_output)
         print(f"\n📋 AI Summary ({symbol}):\n{summary}\n")
 
-        # Export
-        export_to_csv(df_clean, EXPORT_PATH)
+        print(f"📋 Columns for {symbol}: {df_clean.columns.tolist()}")
+        combined_df.append(df_clean)
 
-        upload_to_bigquery(df_clean)
+    if combined_df:
+        full_df = pd.concat(combined_df, ignore_index=True)
+        export_to_csv(full_df, EXPORT_PATH)
+        upload_to_bigquery(full_df)
 
     print("\n✅ Pipeline complete.")
 

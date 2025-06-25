@@ -1,6 +1,19 @@
-
-
 # Changelog
+
+## [v1.2.1] – 2025-06-21
+### Added
+- Full pipeline loop for top 10 performing tickers.
+- Flattened yfinance MultiIndex columns for clean BigQuery compatibility.
+- Timestamp parsing and cleaning for Gemini summaries.
+- Diagnostic output for column schema validation.
+
+### Fixed
+- Type error in Gemini summary step caused by inconsistent 'date' types.
+- Residual multi-ticker column duplication.
+
+### Improved
+- AI summary clarity and structure.
+- Logging consistency across pipeline stages.
 
 ## [v1.1.2] – 2025-06-21
 ### Added
