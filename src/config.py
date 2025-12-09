@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     # General configuration
     data_source: str = Field("data/sample.csv", env="DATA_SOURCE")
     export_path: str = Field("data/cleaned_data.csv", env="EXPORT_PATH")
+    dead_letter_path: str = Field("data/failed_rows.csv", env="DEAD_LETTER_PATH")
 
     # Gemini / AI
     gemini_api_key: str = Field("", env="GEMINI_API_KEY")
@@ -41,6 +42,10 @@ class Settings(BaseSettings):
             "IBM", "ADBE", "PYPL", "CRM", "ORCL",
         ]
     )
+    max_workers: int = Field(4, env="MAX_WORKERS")
+    fetch_timeout: int = Field(15, env="FETCH_TIMEOUT_SECONDS")
+    fetch_retries: int = Field(5, env="FETCH_MAX_RETRIES")
+    fetch_backoff: int = Field(3, env="FETCH_BACKOFF_SECONDS")
 
     @validator("log_level")
     def normalize_log_level(cls, v: str) -> str:

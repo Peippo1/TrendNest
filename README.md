@@ -78,6 +78,7 @@ TrendNest/
    - To emit OpenTelemetry traces/metrics to a collector, set `OTEL_EXPORTER_OTLP_ENDPOINT` (HTTP/OTLP) and optional `OTEL_EXPORTER_OTLP_HEADERS` for auth. Without it, spans are printed to stdout and metrics stay local.
    - `ENVIRONMENT` tags spans/metrics (e.g., `dev`, `staging`, `prod`).
    - `TOP_PERFORMERS_LIMIT` and `TICKERS_UNIVERSE` let you tune the ticker selection.
+   - Resilience knobs: `MAX_WORKERS`, `FETCH_TIMEOUT_SECONDS`, `FETCH_MAX_RETRIES`, `FETCH_BACKOFF_SECONDS`, and `DEAD_LETTER_PATH` for failed rows.
 
 5. Run the pipeline:
    ```
@@ -89,10 +90,16 @@ TrendNest/
    streamlit run dashboard/app.py
    ```
 
+Command-line overrides:
+```
+python run_pipeline.py --tickers AAPL,MSFT --limit 5 --export-path /tmp/output.csv --dead-letter-path /tmp/failed.csv
+```
+
 ## 🔍 Observability + metrics
 - Tracing: pipeline run → per-ticker spans + downstream HTTP (requests/yfinance) via OpenTelemetry.
 - Metrics: counters for runs, tickers processed, and rows processed (`trendnest.pipeline.*`). They export via OTLP if configured, else stay in-process.
 - Logs: structured `logging` with `run_id` on key entries; adjust `LOG_LEVEL` as needed.
+- Resilience: bounded retries with jitter, timeouts on fetches, concurrent ticker processing (`MAX_WORKERS`), and a dead-letter CSV for failures.
 
 ## 🧠 AI Summarization (Gemini 1.5)
 
