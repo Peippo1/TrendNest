@@ -78,7 +78,7 @@ TrendNest/
    - To emit OpenTelemetry traces/metrics to a collector, set `OTEL_EXPORTER_OTLP_ENDPOINT` (HTTP/OTLP) and optional `OTEL_EXPORTER_OTLP_HEADERS` for auth. Without it, spans are printed to stdout and metrics stay local.
    - `ENVIRONMENT` tags spans/metrics (e.g., `dev`, `staging`, `prod`).
    - `TOP_PERFORMERS_LIMIT` and `TICKERS_UNIVERSE` let you tune the ticker selection.
-   - Resilience knobs: `MAX_WORKERS`, `FETCH_TIMEOUT_SECONDS`, `FETCH_MAX_RETRIES`, `FETCH_BACKOFF_SECONDS`, and `DEAD_LETTER_PATH` for failed rows.
+   - Resilience knobs: `MAX_WORKERS`, `FETCH_TIMEOUT_SECONDS`, `FETCH_MAX_RETRIES`, `FETCH_BACKOFF_SECONDS`, `FETCH_PERIOD`, `FETCH_INTERVAL`, and `DEAD_LETTER_PATH` for failed rows.
 
 5. Run the pipeline:
    ```
@@ -92,7 +92,11 @@ TrendNest/
 
 Command-line overrides:
 ```
-python run_pipeline.py --tickers AAPL,MSFT --limit 5 --export-path /tmp/output.csv --dead-letter-path /tmp/failed.csv
+python run_pipeline.py --tickers AAPL,MSFT --limit 5 --period 1mo --interval 1d --export-path /tmp/output.csv --dead-letter-path /tmp/failed.csv
+```
+Use a YAML config file to override settings:
+```
+python run_pipeline.py --config config.yaml
 ```
 
 ## 🔍 Observability + metrics
@@ -100,6 +104,7 @@ python run_pipeline.py --tickers AAPL,MSFT --limit 5 --export-path /tmp/output.c
 - Metrics: counters for runs, tickers processed, and rows processed (`trendnest.pipeline.*`). They export via OTLP if configured, else stay in-process.
 - Logs: structured `logging` with `run_id` on key entries; adjust `LOG_LEVEL` as needed.
 - Resilience: bounded retries with jitter, timeouts on fetches, concurrent ticker processing (`MAX_WORKERS`), and a dead-letter CSV for failures.
+- Metrics expanded: fetch latency histogram (`trendnest.pipeline.fetch_latency_seconds`) and retry/failure counters.
 
 ## 🧪 Testing & CI
 - Run tests locally: `python -m pip install -r requirements-dev.txt && pytest -q`

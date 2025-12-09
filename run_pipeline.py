@@ -1,12 +1,15 @@
 import argparse
 import logging
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
+import yaml
 from opentelemetry import trace
 
-from src.config import get_settings, get_top_performing_stocks
+from src.config import Settings, get_settings, get_top_performing_stocks
+from src.config_loader import load_settings_from_file
 from src.export import export_to_csv
 from src.extract_stocks import fetch_stock_data_yf
 from src.model import analyze_trends
@@ -25,11 +28,16 @@ def parse_args():
     parser.add_argument("--limit", type=int, help="Limit top performers selection.")
     parser.add_argument("--export-path", help="Override export path for cleaned data.")
     parser.add_argument("--dead-letter-path", help="Override path for failed rows CSV.")
+    parser.add_argument("--period", default=None, help="yfinance period (e.g., 1mo, 6mo, 1y).")
+    parser.add_argument("--interval", default=None, help="yfinance interval (e.g., 1d, 1h).")
+    parser.add_argument("--config", help="Path to YAML config file to override settings.")
     return parser.parse_args()
 
 
 def main():
-    settings = get_settings()
+    args = parse_args()
+
+    settings = load_settings_from_file(args.config) if args.config else get_settings()
     setup_logging(settings.log_level)
     tracer = setup_tracing()
     meter = setup_metrics()
@@ -40,10 +48,13 @@ def main():
     row_counter = meter.create_counter("trendnest.pipeline.rows_processed", description="Rows processed")
     retry_counter = meter.create_counter("trendnest.pipeline.fetch_retries", description="Fetch retries")
     failure_counter = meter.create_counter("trendnest.pipeline.failures", description="Per-ticker failures")
+    fetch_latency_hist = meter.create_histogram(
+        "trendnest.pipeline.fetch_latency_seconds",
+        description="Latency of yfinance fetch per ticker",
+        unit="s",
+    )
 
     logger.info("Starting TrendNest pipeline", extra={"run_id": run_id})
-
-    args = parse_args()
 
     if args.tickers:
         tickers = [t.strip().upper() for t in args.tickers.split(",") if t.strip()]
@@ -52,6 +63,8 @@ def main():
 
     export_path = args.export_path or settings.export_path
     dead_letter_path = args.dead_letter_path or settings.dead_letter_path
+    period = args.period or settings.fetch_period
+    interval = args.interval or settings.fetch_interval
 
     logger.info("Tickers to process: %s", ", ".join(tickers), extra={"run_id": run_id})
 
@@ -63,7 +76,17 @@ def main():
 
         with ThreadPoolExecutor(max_workers=settings.max_workers) as executor:
             future_map = {
-                executor.submit(process_ticker, tracer, ticker, run_id, ticker_counter, retry_counter, settings): ticker
+                executor.submit(
+                    process_ticker,
+                    tracer,
+                    ticker,
+                    run_id,
+                    ticker_counter,
+                    retry_counter,
+                    settings,
+                    period,
+                    interval,
+                ): ticker
                 for ticker in tickers
             }
             for future in as_completed(future_map):
@@ -72,12 +95,16 @@ def main():
                     result = future.result()
                     if result is None:
                         continue
-                    df_clean, summary = result
+                    df_clean, summary, fetch_duration = result
+                    fetch_latency_hist.record(
+                        fetch_duration,
+                        attributes={"ticker": symbol, "environment": settings.environment},
+                    )
                     combined_df.append(df_clean)
                     logger.info("AI Summary (%s): %s", symbol, summary, extra={"run_id": run_id})
                 except Exception as e:
                     logger.exception("Failed processing %s: %s", symbol, e, extra={"run_id": run_id})
-                    failed_rows.append({"Ticker": symbol, "error": str(e)})
+                    failed_rows.append({"Ticker": symbol, "error": str(e), "run_id": run_id})
                     failure_counter.add(1, attributes={"ticker": symbol, "environment": settings.environment})
 
         if combined_df:
@@ -93,20 +120,24 @@ def main():
     logger.info("Pipeline complete", extra={"run_id": run_id})
 
 
-def process_ticker(tracer, symbol, run_id, ticker_counter, retry_counter, settings):
+def process_ticker(tracer, symbol, run_id, ticker_counter, retry_counter, settings, period, interval):
     with tracer.start_as_current_span(
         "process_ticker",
         attributes={"ticker": symbol, "run.id": run_id},
     ):
         logger.info("Fetching live stock data for %s", symbol, extra={"run_id": run_id})
+        start = time.perf_counter()
         result = fetch_stock_data_yf(
             symbol,
+            period=period,
+            interval=interval,
             max_retries=settings.fetch_retries,
             backoff=settings.fetch_backoff,
             timeout=settings.fetch_timeout,
             return_attempts=True,
         )
         df_raw, attempts = result
+        fetch_duration = time.perf_counter() - start
         if df_raw is None or df_raw.empty:
             logger.warning("No data for %s. Skipping.", symbol, extra={"run_id": run_id})
             return None
@@ -131,7 +162,7 @@ def process_ticker(tracer, symbol, run_id, ticker_counter, retry_counter, settin
         ticker_counter.add(1, attributes={"ticker": symbol, "environment": settings.environment})
         if attempts > 1:
             retry_counter.add(attempts - 1, attributes={"ticker": symbol, "environment": settings.environment})
-        return df_clean, summary
+        return df_clean, summary, fetch_duration
 
 
 if __name__ == "__main__":

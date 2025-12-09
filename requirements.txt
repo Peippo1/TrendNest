@@ -17,3 +17,4 @@ opentelemetry-exporter-otlp
 opentelemetry-instrumentation-requests
 pydantic
 pydantic-settings
+PyYAML

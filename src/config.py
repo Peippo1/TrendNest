@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     fetch_timeout: int = Field(15, env="FETCH_TIMEOUT_SECONDS")
     fetch_retries: int = Field(5, env="FETCH_MAX_RETRIES")
     fetch_backoff: int = Field(3, env="FETCH_BACKOFF_SECONDS")
+    fetch_period: str = Field("6mo", env="FETCH_PERIOD")
+    fetch_interval: str = Field("1d", env="FETCH_INTERVAL")
 
     @field_validator("log_level")
     @classmethod
