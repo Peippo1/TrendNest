@@ -14,7 +14,15 @@ _last_call_time = 0.0
 _rate_lock = Lock()
 
 
-def fetch_stock_data_yf(symbol, period="6mo", interval="1d", max_retries=5, backoff=3, timeout=DEFAULT_TIMEOUT):
+def fetch_stock_data_yf(
+    symbol,
+    period="6mo",
+    interval="1d",
+    max_retries=5,
+    backoff=3,
+    timeout=DEFAULT_TIMEOUT,
+    return_attempts: bool = False,
+):
     with tracer.start_as_current_span(
         "fetch_stock_data",
         attributes={"symbol": symbol, "period": period, "interval": interval},
@@ -44,7 +52,7 @@ def fetch_stock_data_yf(symbol, period="6mo", interval="1d", max_retries=5, back
                 df.rename(columns={"Date": "date", "Adj Close": "adjusted_close"}, inplace=True)
                 df["Ticker"] = symbol
                 logger.info("Fetched %s rows for %s using yfinance", len(df), symbol)
-                return df, attempt
+                return (df, attempt) if return_attempts else df
             else:
                 logger.warning(
                     "Attempt %s: No data fetched for %s. Retrying in %s seconds...",

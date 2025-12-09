@@ -5,7 +5,8 @@ from typing import List
 
 from dotenv import load_dotenv
 from opentelemetry import trace
-from pydantic import BaseSettings, Field, validator
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -14,6 +15,13 @@ load_dotenv()
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
     # General configuration
     data_source: str = Field("data/sample.csv", env="DATA_SOURCE")
     export_path: str = Field("data/cleaned_data.csv", env="EXPORT_PATH")
@@ -47,20 +55,17 @@ class Settings(BaseSettings):
     fetch_retries: int = Field(5, env="FETCH_MAX_RETRIES")
     fetch_backoff: int = Field(3, env="FETCH_BACKOFF_SECONDS")
 
-    @validator("log_level")
+    @field_validator("log_level")
+    @classmethod
     def normalize_log_level(cls, v: str) -> str:
         return v.upper()
 
-    @validator("tickers_universe", pre=True)
+    @field_validator("tickers_universe", mode="before")
+    @classmethod
     def split_tickers(cls, v):
         if isinstance(v, str):
             return [item.strip().upper() for item in v.split(",") if item.strip()]
         return v
-
-    class Config:
-        case_sensitive = False
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 @lru_cache()

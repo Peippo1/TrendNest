@@ -99,12 +99,14 @@ def process_ticker(tracer, symbol, run_id, ticker_counter, retry_counter, settin
         attributes={"ticker": symbol, "run.id": run_id},
     ):
         logger.info("Fetching live stock data for %s", symbol, extra={"run_id": run_id})
-        df_raw, attempts = fetch_stock_data_yf(
+        result = fetch_stock_data_yf(
             symbol,
             max_retries=settings.fetch_retries,
             backoff=settings.fetch_backoff,
             timeout=settings.fetch_timeout,
+            return_attempts=True,
         )
+        df_raw, attempts = result
         if df_raw is None or df_raw.empty:
             logger.warning("No data for %s. Skipping.", symbol, extra={"run_id": run_id})
             return None
