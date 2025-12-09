@@ -4,11 +4,14 @@ import time
 import yfinance as yf
 import pandas as pd
 from opentelemetry import trace
+from threading import Lock
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
 DEFAULT_TIMEOUT = 15
+_last_call_time = 0.0
+_rate_lock = Lock()
 
 
 def fetch_stock_data_yf(symbol, period="6mo", interval="1d", max_retries=5, backoff=3, timeout=DEFAULT_TIMEOUT):
@@ -18,6 +21,7 @@ def fetch_stock_data_yf(symbol, period="6mo", interval="1d", max_retries=5, back
     ):
         for attempt in range(1, max_retries + 1):
             try:
+                _respect_rate_limit()
                 df = yf.download(symbol, period=period, interval=interval, timeout=timeout)
             except Exception as e:
                 logger.warning(
@@ -40,7 +44,7 @@ def fetch_stock_data_yf(symbol, period="6mo", interval="1d", max_retries=5, back
                 df.rename(columns={"Date": "date", "Adj Close": "adjusted_close"}, inplace=True)
                 df["Ticker"] = symbol
                 logger.info("Fetched %s rows for %s using yfinance", len(df), symbol)
-                return df
+                return df, attempt
             else:
                 logger.warning(
                     "Attempt %s: No data fetched for %s. Retrying in %s seconds...",
@@ -52,3 +56,14 @@ def fetch_stock_data_yf(symbol, period="6mo", interval="1d", max_retries=5, back
                 backoff *= 2  # Exponential backoff
 
     raise ValueError(f"Failed to fetch data for {symbol} after {max_retries} attempts.")
+
+
+def _respect_rate_limit(min_interval: float = 0.5):
+    """Ensure at least min_interval seconds between downloads across threads."""
+    global _last_call_time
+    with _rate_lock:
+        now = time.monotonic()
+        elapsed = now - _last_call_time
+        if elapsed < min_interval:
+            time.sleep(min_interval - elapsed)
+        _last_call_time = time.monotonic()

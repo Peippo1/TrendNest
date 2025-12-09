@@ -101,6 +101,14 @@ python run_pipeline.py --tickers AAPL,MSFT --limit 5 --export-path /tmp/output.c
 - Logs: structured `logging` with `run_id` on key entries; adjust `LOG_LEVEL` as needed.
 - Resilience: bounded retries with jitter, timeouts on fetches, concurrent ticker processing (`MAX_WORKERS`), and a dead-letter CSV for failures.
 
+## 🧪 Testing & CI
+- Run tests locally: `python -m pip install -r requirements-dev.txt && pytest -q`
+- GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests on pushes/PRs to `main`.
+
+## 🛡️ Security
+- Keep secrets out of git; use `.env.example` as a template and prefer cloud secret storage.
+- See `SECURITY.md` for reporting guidance and hygiene tips.
+
 ## 🧠 AI Summarization (Gemini 1.5)
 
 TrendNest integrates Gemini 1.5 to generate natural language summaries of key insights in your trend data. This makes the dashboard useful to both technical and non-technical stakeholders.

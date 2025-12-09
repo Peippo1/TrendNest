@@ -14,6 +14,7 @@ from src.observability import setup_logging, setup_metrics, setup_tracing
 from src.summarize import generate_summary
 from src.transform import clean_data
 from src.upload import upload_to_bigquery
+from src.validation import validate_schema
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,8 @@ def main():
     run_counter = meter.create_counter("trendnest.pipeline.runs", description="Number of pipeline runs")
     ticker_counter = meter.create_counter("trendnest.pipeline.tickers_processed", description="Tickers processed")
     row_counter = meter.create_counter("trendnest.pipeline.rows_processed", description="Rows processed")
+    retry_counter = meter.create_counter("trendnest.pipeline.fetch_retries", description="Fetch retries")
+    failure_counter = meter.create_counter("trendnest.pipeline.failures", description="Per-ticker failures")
 
     logger.info("Starting TrendNest pipeline", extra={"run_id": run_id})
 
@@ -60,7 +63,7 @@ def main():
 
         with ThreadPoolExecutor(max_workers=settings.max_workers) as executor:
             future_map = {
-                executor.submit(process_ticker, tracer, ticker, run_id, ticker_counter, settings): ticker
+                executor.submit(process_ticker, tracer, ticker, run_id, ticker_counter, retry_counter, settings): ticker
                 for ticker in tickers
             }
             for future in as_completed(future_map):
@@ -75,6 +78,7 @@ def main():
                 except Exception as e:
                     logger.exception("Failed processing %s: %s", symbol, e, extra={"run_id": run_id})
                     failed_rows.append({"Ticker": symbol, "error": str(e)})
+                    failure_counter.add(1, attributes={"ticker": symbol, "environment": settings.environment})
 
         if combined_df:
             full_df = pd.concat(combined_df, ignore_index=True)
@@ -89,13 +93,13 @@ def main():
     logger.info("Pipeline complete", extra={"run_id": run_id})
 
 
-def process_ticker(tracer, symbol, run_id, ticker_counter, settings):
+def process_ticker(tracer, symbol, run_id, ticker_counter, retry_counter, settings):
     with tracer.start_as_current_span(
         "process_ticker",
         attributes={"ticker": symbol, "run.id": run_id},
     ):
         logger.info("Fetching live stock data for %s", symbol, extra={"run_id": run_id})
-        df_raw = fetch_stock_data_yf(
+        df_raw, attempts = fetch_stock_data_yf(
             symbol,
             max_retries=settings.fetch_retries,
             backoff=settings.fetch_backoff,
@@ -111,6 +115,10 @@ def process_ticker(tracer, symbol, run_id, ticker_counter, settings):
         df_clean = clean_data(df_raw)
         df_clean["Ticker"] = symbol
 
+        errors = validate_schema(df_clean)
+        if errors:
+            raise ValueError(f"Schema validation failed for {symbol}: {errors}")
+
         # Analyze
         trend_output = analyze_trends(df_clean)
 
@@ -119,6 +127,8 @@ def process_ticker(tracer, symbol, run_id, ticker_counter, settings):
 
         logger.debug("Columns for %s: %s", symbol, df_clean.columns.tolist(), extra={"run_id": run_id})
         ticker_counter.add(1, attributes={"ticker": symbol, "environment": settings.environment})
+        if attempts > 1:
+            retry_counter.add(attempts - 1, attributes={"ticker": symbol, "environment": settings.environment})
         return df_clean, summary
 
 
