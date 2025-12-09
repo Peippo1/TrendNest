@@ -5,9 +5,12 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 from opentelemetry import trace
 
+from src.config import get_settings
+
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+settings = get_settings()
+genai.configure(api_key=settings.gemini_api_key or os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-pro")
 
 logger = logging.getLogger(__name__)

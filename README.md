@@ -75,8 +75,9 @@ TrendNest/
 
 4. (Optional) Set up observability:
    - `LOG_LEVEL` controls verbosity (default `INFO`).
-   - To emit OpenTelemetry traces to a collector, set `OTEL_EXPORTER_OTLP_ENDPOINT` (HTTP/OTLP) and optional `OTEL_EXPORTER_OTLP_HEADERS` for auth. Without it, spans are printed to stdout.
-   - `ENVIRONMENT` tags spans (e.g., `dev`, `staging`, `prod`).
+   - To emit OpenTelemetry traces/metrics to a collector, set `OTEL_EXPORTER_OTLP_ENDPOINT` (HTTP/OTLP) and optional `OTEL_EXPORTER_OTLP_HEADERS` for auth. Without it, spans are printed to stdout and metrics stay local.
+   - `ENVIRONMENT` tags spans/metrics (e.g., `dev`, `staging`, `prod`).
+   - `TOP_PERFORMERS_LIMIT` and `TICKERS_UNIVERSE` let you tune the ticker selection.
 
 5. Run the pipeline:
    ```
@@ -87,6 +88,11 @@ TrendNest/
    ```
    streamlit run dashboard/app.py
    ```
+
+## 🔍 Observability + metrics
+- Tracing: pipeline run → per-ticker spans + downstream HTTP (requests/yfinance) via OpenTelemetry.
+- Metrics: counters for runs, tickers processed, and rows processed (`trendnest.pipeline.*`). They export via OTLP if configured, else stay in-process.
+- Logs: structured `logging` with `run_id` on key entries; adjust `LOG_LEVEL` as needed.
 
 ## 🧠 AI Summarization (Gemini 1.5)
 

@@ -4,24 +4,26 @@ import pandas_gbq
 from google.oauth2 import service_account
 from opentelemetry import trace
 
-# Configuration
-PROJECT_ID = os.getenv("GCP_PROJECT_ID", "")
-DATASET = os.getenv("BQ_DATASET", "trendnest")
-TABLE = os.getenv("BQ_TABLE", "cleaned_stock_data")
+from src.config import get_settings
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
 
 def upload_to_bigquery(df):
+    settings = get_settings()
     with tracer.start_as_current_span(
         "upload_to_bigquery",
-        attributes={"project_id": PROJECT_ID, "dataset": DATASET, "table": TABLE},
+        attributes={
+            "project_id": settings.gcp_project_id,
+            "dataset": settings.bq_dataset,
+            "table": settings.bq_table,
+        },
     ):
         logger.info("Uploading data to BigQuery")
 
         # Authenticate using service account
-        credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        credentials_path = settings.google_credentials_path or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
         if not credentials_path or not os.path.isfile(credentials_path):
             raise EnvironmentError("Missing or invalid GOOGLE_APPLICATION_CREDENTIALS path.")
 
@@ -29,7 +31,7 @@ def upload_to_bigquery(df):
 
         # Set global context for pandas_gbq
         pandas_gbq.context.credentials = credentials
-        pandas_gbq.context.project = PROJECT_ID
+        pandas_gbq.context.project = settings.gcp_project_id
 
         # Flatten column headers in case of MultiIndex
         df.columns = [col[0] if isinstance(col, tuple) else str(col) for col in df.columns]
@@ -40,11 +42,11 @@ def upload_to_bigquery(df):
         try:
             pandas_gbq.to_gbq(
                 dataframe=df,
-                destination_table=f"{DATASET}.{TABLE}",
-                project_id=PROJECT_ID,
+                destination_table=f"{settings.bq_dataset}.{settings.bq_table}",
+                project_id=settings.gcp_project_id,
                 if_exists="append"
             )
-            logger.info("Upload to BigQuery complete: %s.%s", DATASET, TABLE)
+            logger.info("Upload to BigQuery complete: %s.%s", settings.bq_dataset, settings.bq_table)
         except Exception as e:
             logger.exception("Failed to upload to BigQuery: %s", e)
             raise
