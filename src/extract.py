@@ -1,12 +1,18 @@
+import logging
 import pandas as pd
+from opentelemetry import trace
 from src.config import DATA_SOURCE
 
+logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
+
 def extract_data():
-    try:
-        df = pd.read_csv(DATA_SOURCE)
-        print(f"Data extracted from {DATA_SOURCE}")
-        return df
-    except Exception as e:
-        print(f"Error extracting data: {e}")
-        return pd.DataFrame()
+    with tracer.start_as_current_span("extract_data", attributes={"source": DATA_SOURCE}):
+        try:
+            df = pd.read_csv(DATA_SOURCE)
+            logger.info("Data extracted from %s", DATA_SOURCE)
+            return df
+        except Exception as e:
+            logger.exception("Error extracting data: %s", e)
+            return pd.DataFrame()
     

@@ -51,7 +51,7 @@ TrendNest/
 ├── tests/                     # Unit tests (placeholder)
 ├── run_pipeline.py            # Main pipeline runner
 ├── requirements.txt           # Python dependencies
-├── .env                       # Environment variables
+├── .env.example               # Sample environment variables (copy to .env)
 ├── .gitignore                 # Git exclusions
 └── README.md                  # This file
 ```
@@ -71,14 +71,19 @@ TrendNest/
    pip install -r requirements.txt
    ```
 
-3. Configure `.env` and update data source paths or credentials.
+3. Copy `.env.example` to `.env`, then fill in your own credentials. Keep `.env` out of version control.
 
-4. Run the pipeline:
+4. (Optional) Set up observability:
+   - `LOG_LEVEL` controls verbosity (default `INFO`).
+   - To emit OpenTelemetry traces to a collector, set `OTEL_EXPORTER_OTLP_ENDPOINT` (HTTP/OTLP) and optional `OTEL_EXPORTER_OTLP_HEADERS` for auth. Without it, spans are printed to stdout.
+   - `ENVIRONMENT` tags spans (e.g., `dev`, `staging`, `prod`).
+
+5. Run the pipeline:
    ```
    python run_pipeline.py
    ```
 
-5. Start the dashboard:
+6. Start the dashboard:
    ```
    streamlit run dashboard/app.py
    ```

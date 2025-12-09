@@ -1,6 +1,11 @@
 # src/config.py
+import logging
 import os
 from dotenv import load_dotenv
+from opentelemetry import trace
+
+logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 load_dotenv()
 
@@ -20,16 +25,17 @@ def get_top_performing_stocks(limit=10):
     ]
 
     changes = []
-    for symbol in symbols:
-        ticker = yf.Ticker(symbol)
-        hist = ticker.history(period="2d")  # fetch previous and current close
-        if len(hist) >= 2:
-            prev_close = hist['Close'].iloc[-2]
-            today_close = hist['Close'].iloc[-1]
-            pct_change = ((today_close - prev_close) / prev_close) * 100
-            changes.append((symbol, pct_change))
+    with tracer.start_as_current_span("select_top_performers", attributes={"universe_size": len(symbols)}):
+        for symbol in symbols:
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(period="2d")  # fetch previous and current close
+            if len(hist) >= 2:
+                prev_close = hist['Close'].iloc[-2]
+                today_close = hist['Close'].iloc[-1]
+                pct_change = ((today_close - prev_close) / prev_close) * 100
+                changes.append((symbol, pct_change))
 
-    sorted_changes = sorted(changes, key=lambda x: x[1], reverse=True)
-    top_symbols = [sym for sym, _ in sorted_changes[:limit]]
-    print(f"📈 Top {limit} performing stocks: {top_symbols}")
-    return top_symbols
+        sorted_changes = sorted(changes, key=lambda x: x[1], reverse=True)
+        top_symbols = [sym for sym, _ in sorted_changes[:limit]]
+        logger.info("Top %s performing stocks: %s", limit, top_symbols)
+        return top_symbols
